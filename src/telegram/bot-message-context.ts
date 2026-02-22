@@ -189,7 +189,20 @@ export const buildTelegramMessageContext = async ({
     },
     parentPeer,
   });
-  const baseSessionKey = route.sessionKey;
+
+  // Telegram topic-bound subagent sessions (persistent leads):
+  // If this is a forum topic that has been bound to a subagent/session key, route inbound
+  // messages to that bound session instead of the normal chat session.
+  const { resolveBoundSessionForTelegramTopic } = await import("./subagent-topic-bindings.js");
+  const bound = isGroup
+    ? resolveBoundSessionForTelegramTopic({
+        accountId: account.accountId,
+        chatId,
+        topicId: resolvedThreadId,
+      })
+    : null;
+
+  const baseSessionKey = bound?.targetSessionKey ?? route.sessionKey;
   // DMs: use raw messageThreadId for thread sessions (not forum topic ids)
   const dmThreadId = threadSpec.scope === "dm" ? threadSpec.id : undefined;
   const threadKeys =
@@ -197,7 +210,10 @@ export const buildTelegramMessageContext = async ({
       ? resolveThreadSessionKeys({ baseSessionKey, threadId: String(dmThreadId) })
       : null;
   const sessionKey = threadKeys?.sessionKey ?? baseSessionKey;
-  const mentionRegexes = buildMentionRegexes(cfg, route.agentId);
+  const effectiveAgentId = bound?.targetSessionKey
+    ? resolveAgentIdFromSessionKey(bound.targetSessionKey) || route.agentId
+    : route.agentId;
+  const mentionRegexes = buildMentionRegexes(cfg, effectiveAgentId);
   const effectiveDmAllow = normalizeAllowFromWithStore({ allowFrom, storeAllowFrom, dmPolicy });
   const groupAllowOverride = firstDefined(topicConfig?.allowFrom, groupConfig?.allowFrom);
   const effectiveGroupAllow = normalizeAllowFromWithStore({
@@ -239,7 +255,7 @@ export const buildTelegramMessageContext = async ({
     chatId,
     messageThreadId: resolvedThreadId,
     sessionKey: sessionKey,
-    agentId: route.agentId,
+    agentId: effectiveAgentId,
   });
   const baseRequireMention = resolveGroupRequireMention(chatId);
   const requireMention = firstDefined(
@@ -374,7 +390,7 @@ export const buildTelegramMessageContext = async ({
   // Check if sticker has a cached description - if so, use it instead of sending the image
   const cachedStickerDescription = allMedia[0]?.stickerMetadata?.cachedDescription;
   const stickerSupportsVision = msg.sticker
-    ? await resolveStickerVisionSupport({ cfg, agentId: route.agentId })
+    ? await resolveStickerVisionSupport({ cfg, agentId: effectiveAgentId })
     : false;
   const stickerCacheHit = Boolean(cachedStickerDescription) && !stickerSupportsVision;
   if (stickerCacheHit) {
@@ -505,7 +521,7 @@ export const buildTelegramMessageContext = async ({
   }
 
   // ACK reactions
-  const ackReaction = resolveAckReaction(cfg, route.agentId, {
+  const ackReaction = resolveAckReaction(cfg, effectiveAgentId, {
     channel: "telegram",
     accountId: account.accountId,
   });
@@ -635,7 +651,7 @@ export const buildTelegramMessageContext = async ({
     ? (groupLabel ?? `group:${chatId}`)
     : buildSenderLabel(msg, senderId || chatId);
   const storePath = resolveStorePath(cfg.session?.store, {
-    agentId: route.agentId,
+    agentId: effectiveAgentId,
   });
   const envelopeOptions = resolveEnvelopeFormatOptions(cfg);
   const previousTimestamp = readSessionUpdatedAt({
@@ -809,7 +825,11 @@ export const buildTelegramMessageContext = async ({
     historyKey,
     historyLimit,
     groupHistories,
-    route,
+    route: {
+      ...route,
+      agentId: effectiveAgentId,
+      sessionKey,
+    },
     skillFilter,
     sendTyping,
     sendRecordVoice,

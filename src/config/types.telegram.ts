@@ -22,6 +22,15 @@ export type TelegramActionConfig = {
   createForumTopic?: boolean;
 };
 
+export type TelegramThreadBindingsConfig = {
+  /** Master switch for Telegram thread-bound session features. Default: inherits global session.threadBindings.enabled (true). */
+  enabled?: boolean;
+  /** Auto-unbind TTL in hours (optional). */
+  ttlHours?: number;
+  /** Opt-in for sessions_spawn({ thread:true }) to create/bind Telegram topics for persistent subagent sessions. */
+  spawnSubagentSessions?: boolean;
+};
+
 export type TelegramNetworkConfig = {
   /** Override Node's autoSelectFamily behavior (true = enable, false = disable). */
   autoSelectFamily?: boolean;
@@ -45,6 +54,8 @@ export type TelegramCustomCommand = {
 };
 
 export type TelegramAccountConfig = {
+  /** Telegram thread-bound session overrides (Topics). */
+  threadBindings?: TelegramThreadBindingsConfig;
   /** Optional display name for this account (used in CLI/UI lists). */
   name?: string;
   /** Optional provider capability tags used for agent/runtime guidance. */

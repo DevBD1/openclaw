@@ -312,6 +312,28 @@ WhatsApp runs through the gateway's web channel (Baileys Web). It starts automat
 - Env fallbacks: `GOOGLE_CHAT_SERVICE_ACCOUNT` or `GOOGLE_CHAT_SERVICE_ACCOUNT_FILE`.
 - Use `spaces/<spaceId>` or `users/<userId|email>` for delivery targets.
 
+### Telegram (thread bindings)
+
+Telegram supports thread-bound sessions via **Forum Topics** in supergroups.
+
+```json5
+{
+  channels: {
+    telegram: {
+      threadBindings: {
+        enabled: true,
+        ttlHours: 24,
+        spawnSubagentSessions: true, // opt-in for sessions_spawn({ thread: true }) topic creation/binding
+      },
+    },
+  },
+}
+```
+
+Notes:
+- Requires a supergroup with Topics enabled.
+- Bot must have permission to manage topics.
+
 ### Slack
 
 ```json5

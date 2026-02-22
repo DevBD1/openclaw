@@ -208,6 +208,34 @@ curl "https://api.telegram.org/bot<bot_token>/getUpdates"
   </Tab>
 </Tabs>
 
+## Thread-bound subagent sessions (Topics)
+
+Telegram can support **persistent subagent sessions** by binding an OpenClaw subagent session to a **Forum Topic** in a Telegram supergroup.
+
+Requirements:
+- Use a **Telegram supergroup** with **Topics enabled**.
+- The bot must have permission to manage topics (`can_manage_topics`).
+- Opt-in config: `channels.telegram.threadBindings.spawnSubagentSessions: true`.
+
+When enabled:
+- `sessions_spawn({ thread:true, mode:"session" })` creates (or reuses) a forum topic named after the subagent label (e.g. `LEAD_CTO`).
+- Messages posted in that topic route to the bound subagent session.
+
+Config example:
+
+```json5
+{
+  channels: {
+    telegram: {
+      threadBindings: {
+        enabled: true,
+        spawnSubagentSessions: true,
+      },
+    },
+  },
+}
+```
+
 ## Runtime behavior
 
 - Telegram is owned by the gateway process.
